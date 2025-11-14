@@ -4,6 +4,7 @@ import Header from './components/Header';
 import Summary from './components/Summary';
 import EntryForm from './components/EntryForm';
 import EntryList from './components/EntryList';
+import Modal from './components/Modal';
 import { storage } from './utils/storage';
 import { generatePDF } from './utils/pdfGenerator';
 
@@ -173,11 +174,11 @@ export default function App() {
 
         <div className="grid grid-cols-2 gap-4 mb-6">
           <button
-            onClick={() => setShowForm(!showForm)}
+            onClick={() => setShowForm(true)}
             className="bg-green-500 hover:bg-green-600 text-white rounded-xl p-4 flex items-center justify-center gap-2 text-lg font-semibold shadow-lg transition-colors"
           >
             <Plus className="w-6 h-6" />
-            {showForm ? 'Cancelar' : 'Nuevo Registro'}
+            Nuevo Registro
           </button>
           <button
             onClick={handleGeneratePDF}
@@ -189,7 +190,11 @@ export default function App() {
           </button>
         </div>
 
-        {showForm && (
+        <Modal
+          isOpen={showForm}
+          onClose={resetForm}
+          title={editingId ? 'Editar Registro' : 'Nuevo Registro'}
+        >
           <EntryForm
             formData={formData}
             setFormData={setFormData}
@@ -197,7 +202,7 @@ export default function App() {
             onCancel={resetForm}
             isEditing={!!editingId}
           />
-        )}
+        </Modal>
 
         <div className="space-y-4">
           <h2 className="text-2xl font-bold text-gray-800">

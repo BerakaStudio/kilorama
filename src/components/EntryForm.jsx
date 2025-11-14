@@ -31,11 +31,7 @@ export default function EntryForm({
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-      <h3 className="text-xl font-bold text-gray-800 mb-4">
-        {isEditing ? 'Editar Registro' : 'Nuevo Registro'}
-      </h3>
-
+    <div>
       <div className="mb-4">
         <label className="block text-lg font-semibold text-gray-700 mb-2">
           Fecha
