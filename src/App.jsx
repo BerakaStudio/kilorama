@@ -67,7 +67,7 @@ export default function App() {
     if (validDeliveries.length === 0) return;
 
     const newEntry = {
-      id: editingId || Date.now(),
+      id: Array.isArray(editingId) ? Date.now() : (editingId || Date.now()),
       date: formData.date,
       deliveries: validDeliveries.map(d => ({
         requested: parseFloat(d.requested),
@@ -76,7 +76,10 @@ export default function App() {
     };
 
     if (editingId) {
-      setEntries(entries.map(e => (e.id === editingId ? newEntry : e)));
+      // Si es array, eliminar todos los registros viejos del día
+      const idsToRemove = Array.isArray(editingId) ? editingId : [editingId];
+      const filteredEntries = entries.filter(e => !idsToRemove.includes(e.id));
+      setEntries([...filteredEntries, newEntry]);
       setEditingId(null);
     } else {
       setEntries([...entries, newEntry]);
@@ -95,14 +98,22 @@ export default function App() {
   };
 
   const startEdit = (entry) => {
+    // Encontrar todos los registros del mismo día
+    const sameDay = entries.filter(e => e.date === entry.date);
+    
+    // Consolidar todas las entregas del día
+    const allDeliveries = sameDay.flatMap(e => e.deliveries);
+    
     setFormData({
       date: entry.date,
-      deliveries: entry.deliveries.map(d => ({
+      deliveries: allDeliveries.map(d => ({
         requested: d.requested.toString(),
         delivered: d.delivered.toString()
       }))
     });
-    setEditingId(entry.id);
+    
+    // Guardar todos los IDs del día para poder eliminarlos al actualizar
+    setEditingId(sameDay.map(e => e.id));
     setShowForm(true);
   };
 
