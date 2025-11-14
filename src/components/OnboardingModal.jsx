@@ -30,11 +30,11 @@ export default function OnboardingModal({ isOpen, onComplete }) {
     }
   ];
 
-  const handleNext = () => {
-    if (step < steps.length - 1) {
-      setStep(step + 1);
-    }
-  };
+    const handleNext = () => {
+        if (step < steps.length) {  // Cambiar de steps.length - 1 a steps.length
+            setStep(step + 1);
+        }
+    };
 
   const handleBack = () => {
     if (step > 0) {
