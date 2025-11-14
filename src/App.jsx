@@ -5,6 +5,7 @@ import Summary from './components/Summary';
 import EntryForm from './components/EntryForm';
 import EntryList from './components/EntryList';
 import Modal from './components/Modal';
+import Footer from './components/Footer';
 import { storage } from './utils/storage';
 import { generatePDF } from './utils/pdfGenerator';
 
@@ -162,60 +163,63 @@ export default function App() {
   const { totalRequested, totalDelivered } = calculateTotals(periodEntries);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 pb-20">
-      <div className="max-w-4xl mx-auto">
-        <Header currentPeriod={currentPeriod} />
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="flex-1 p-4 pb-20">
+        <div className="max-w-4xl mx-auto">
+          <Header currentPeriod={currentPeriod} />
 
-        <Summary
-          totalRequested={totalRequested}
-          totalDelivered={totalDelivered}
-          daysWorked={periodEntries.length}
-        />
-
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-green-500 hover:bg-green-600 text-white rounded-xl p-4 flex items-center justify-center gap-2 text-lg font-semibold shadow-lg transition-colors"
-          >
-            <Plus className="w-6 h-6" />
-            Nuevo Registro
-          </button>
-          <button
-            onClick={handleGeneratePDF}
-            disabled={periodEntries.length === 0}
-            className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded-xl p-4 flex items-center justify-center gap-2 text-lg font-semibold shadow-lg transition-colors"
-          >
-            <FileText className="w-6 h-6" />
-            Generar Comprobante
-          </button>
-        </div>
-
-        <Modal
-          isOpen={showForm}
-          onClose={resetForm}
-          title={editingId ? 'Editar Registro' : 'Nuevo Registro'}
-        >
-          <EntryForm
-            formData={formData}
-            setFormData={setFormData}
-            onSubmit={handleSubmit}
-            onCancel={resetForm}
-            isEditing={!!editingId}
+          <Summary
+            totalRequested={totalRequested}
+            totalDelivered={totalDelivered}
+            daysWorked={periodEntries.length}
           />
-        </Modal>
 
-        <div className="space-y-4">
-          <h2 className="text-2xl font-bold text-gray-800">
-            Registros del Período
-          </h2>
-          <EntryList
-            periodEntries={periodEntries}
-            onEdit={startEdit}
-            onDelete={deleteEntry}
-            onDeleteDay={deleteDay}
-          />
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <button
+              onClick={() => setShowForm(true)}
+              className="bg-green-500 hover:bg-green-600 text-white rounded-xl p-4 flex items-center justify-center gap-2 text-lg font-semibold shadow-lg transition-colors"
+            >
+              <Plus className="w-6 h-6" />
+              Nuevo Registro
+            </button>
+            <button
+              onClick={handleGeneratePDF}
+              disabled={periodEntries.length === 0}
+              className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded-xl p-4 flex items-center justify-center gap-2 text-lg font-semibold shadow-lg transition-colors"
+            >
+              <FileText className="w-6 h-6" />
+              Generar Comprobante
+            </button>
+          </div>
+
+          <Modal
+            isOpen={showForm}
+            onClose={resetForm}
+            title={editingId ? 'Editar Registro' : 'Nuevo Registro'}
+          >
+            <EntryForm
+              formData={formData}
+              setFormData={setFormData}
+              onSubmit={handleSubmit}
+              onCancel={resetForm}
+              isEditing={!!editingId}
+            />
+          </Modal>
+
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-gray-800">
+              Registros del Período
+            </h2>
+            <EntryList
+              periodEntries={periodEntries}
+              onEdit={startEdit}
+              onDelete={deleteEntry}
+              onDeleteDay={deleteDay}
+            />
+          </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
