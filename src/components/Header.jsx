@@ -1,13 +1,12 @@
 import React from 'react';
 import { Calendar } from 'lucide-react';
-import Logo from '../img/icon.svg';
 
 export default function Header({ currentPeriod }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
       <div className="flex items-center gap-4">
         <img 
-          src={Logo} 
+          src="/icon.svg" 
           alt="Kilorama" 
           className="w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0"
         />
