@@ -6,7 +6,8 @@ import EntryForm from './components/EntryForm';
 import EntryList from './components/EntryList';
 import Modal from './components/Modal';
 import Footer from './components/Footer';
-import { storage } from './utils/storage';
+import OnboardingModal from './components/OnboardingModal';
+import { storage, userStorage } from './utils/storage';
 import { generatePDF } from './utils/pdfGenerator';
 
 export default function App() {
@@ -14,6 +15,8 @@ export default function App() {
   const [showForm, setShowForm] = useState(false);
   const [currentPeriod, setCurrentPeriod] = useState({ start: '', end: '' });
   const [editingId, setEditingId] = useState(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [userData, setUserData] = useState(null);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     deliveries: [{ requested: '', delivered: '' }]
@@ -22,11 +25,33 @@ export default function App() {
   useEffect(() => {
     loadEntries();
     calculateCurrentPeriod();
+    checkOnboarding();
   }, []);
 
   useEffect(() => {
     if (entries.length > 0) saveEntries();
   }, [entries]);
+
+  const checkOnboarding = async () => {
+    const hasSeenOnboarding = await userStorage.hasSeenOnboarding();
+    if (!hasSeenOnboarding) {
+      setShowOnboarding(true);
+    } else {
+      const user = await userStorage.getUser();
+      setUserData(user);
+    }
+  };
+
+  const handleOnboardingComplete = async (fullName) => {
+    const user = {
+      fullName,
+      hasSeenOnboarding: true,
+      createdAt: new Date().toISOString()
+    };
+    await userStorage.setUser(user);
+    setUserData(user);
+    setShowOnboarding(false);
+  };
 
   const loadEntries = async () => {
     const result = await storage.get('vegetable-entries');
@@ -76,7 +101,6 @@ export default function App() {
     };
 
     if (editingId) {
-      // Si es array, eliminar todos los registros viejos del día
       const idsToRemove = Array.isArray(editingId) ? editingId : [editingId];
       const filteredEntries = entries.filter(e => !idsToRemove.includes(e.id));
       setEntries([...filteredEntries, newEntry]);
@@ -98,10 +122,7 @@ export default function App() {
   };
 
   const startEdit = (entry) => {
-    // Encontrar todos los registros del mismo día
     const sameDay = entries.filter(e => e.date === entry.date);
-    
-    // Consolidar todas las entregas del día
     const allDeliveries = sameDay.flatMap(e => e.deliveries);
     
     setFormData({
@@ -112,7 +133,6 @@ export default function App() {
       }))
     });
     
-    // Guardar todos los IDs del día para poder eliminarlos al actualizar
     setEditingId(sameDay.map(e => e.id));
     setShowForm(true);
   };
@@ -167,7 +187,7 @@ export default function App() {
   const handleGeneratePDF = () => {
     const periodEntries = getPeriodEntries();
     const totals = calculateTotals(periodEntries);
-    generatePDF(periodEntries, currentPeriod, totals);
+    generatePDF(periodEntries, currentPeriod, totals, userData?.fullName);
   };
 
   const periodEntries = getPeriodEntries();
@@ -175,9 +195,18 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
+      <OnboardingModal 
+        isOpen={showOnboarding} 
+        onComplete={handleOnboardingComplete} 
+      />
+      
       <div className="flex-1 p-4 pb-20">
         <div className="max-w-4xl mx-auto">
-          <Header currentPeriod={currentPeriod} />
+          <Header 
+            currentPeriod={currentPeriod} 
+            userName={userData?.fullName}
+            workDays={periodEntries.length}
+          />
 
           <Summary
             totalRequested={totalRequested}

@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 
-export const generatePDF = (periodEntries, currentPeriod, totals) => {
+export const generatePDF = (periodEntries, currentPeriod, totals, userName = null) => {
   const { totalRequested, totalDelivered } = totals;
 
   const formatDate = (dateStr) => {
@@ -46,6 +46,14 @@ export const generatePDF = (periodEntries, currentPeriod, totals) => {
   y += 10;
   drawLine(y);
   y += 8;
+
+  if (userName) {
+    y += 5;
+    doc.setFontSize(10);
+    doc.setFont('courier', 'normal');
+    centerText(`Trabajador: ${userName}`, y);
+    y += 5;
+  }
 
   // Period info
   doc.setFontSize(10);

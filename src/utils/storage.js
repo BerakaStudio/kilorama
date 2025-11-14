@@ -41,3 +41,20 @@ export const storage = {
     }
   }
 };
+
+// Funciones específicas de usuario
+export const userStorage = {
+  async getUser() {
+    const result = await storage.get('kilorama-user');
+    return result?.value ? JSON.parse(result.value) : null;
+  },
+
+  async setUser(userData) {
+    await storage.set('kilorama-user', JSON.stringify(userData));
+  },
+
+  async hasSeenOnboarding() {
+    const user = await this.getUser();
+    return user?.hasSeenOnboarding || false;
+  }
+};
