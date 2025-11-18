@@ -94,7 +94,6 @@ export default function App() {
     }
   };
 
-  // Guardar inmediatamente (sin useEffect)
   const saveEntriesImmediately = async (newEntries) => {
     await storage.set('vegetable-entries', JSON.stringify(newEntries));
   };
@@ -150,19 +149,13 @@ export default function App() {
       const filteredEntries = entries.filter(e => !idsToRemove.includes(e.id));
       newEntries = [...filteredEntries, newEntry];
       setEntries(newEntries);
-      
-      // Guardar INMEDIATAMENTE
       await saveEntriesImmediately(newEntries);
-      
       setEditingId(null);
       toast.success('Registro actualizado correctamente');
     } else {
       newEntries = [...entries, newEntry];
       setEntries(newEntries);
-      
-      // Guardar INMEDIATAMENTE
       await saveEntriesImmediately(newEntries);
-      
       toast.success('Registro guardado correctamente');
     }
 
@@ -198,10 +191,7 @@ export default function App() {
     if (confirm('¿Eliminar este registro?')) {
       const newEntries = entries.filter(e => e.id !== id);
       setEntries(newEntries);
-      
-      // Guardar INMEDIATAMENTE
       await saveEntriesImmediately(newEntries);
-      
       toast.success('Registro eliminado');
     }
   };
@@ -211,14 +201,27 @@ export default function App() {
       const idsToDelete = dayEntry.entries.map(e => e.id);
       const newEntries = entries.filter(e => !idsToDelete.includes(e.id));
       setEntries(newEntries);
-      
-      // Guardar INMEDIATAMENTE
       await saveEntriesImmediately(newEntries);
-      
       toast.success('Registros del día eliminados');
     }
   };
 
+  // Modificado: Ahora devuelve TODAS las entregas (sin filtrar por período)
+  const getAllEntries = () => {
+    const grouped = entries.reduce((acc, entry) => {
+      if (!acc[entry.date]) {
+        acc[entry.date] = { date: entry.date, entries: [] };
+      }
+      acc[entry.date].entries.push(entry);
+      return acc;
+    }, {});
+
+    return Object.values(grouped).sort(
+      (a, b) => new Date(b.date) - new Date(a.date) // Orden descendente (más recientes primero)
+    );
+  };
+
+  // Calcula totales solo del período actual para el PDF
   const getPeriodEntries = () => {
     const filtered = entries.filter(
       e => e.date >= currentPeriod.start && e.date <= currentPeriod.end
@@ -237,11 +240,11 @@ export default function App() {
     );
   };
 
-  const calculateTotals = (periodEntries) => {
+  const calculateTotals = (entriesList) => {
     let totalRequested = 0;
     let totalDelivered = 0;
 
-    periodEntries.forEach(dayEntry => {
+    entriesList.forEach(dayEntry => {
       dayEntry.entries.forEach(entry => {
         entry.deliveries.forEach(d => {
           totalRequested += d.requested;
@@ -268,7 +271,8 @@ export default function App() {
     }
   };
 
-  const periodEntries = getPeriodEntries();
+  const allEntries = getAllEntries(); // Mostrar TODAS las entregas históricas
+  const periodEntries = getPeriodEntries(); // Solo para el PDF
   const { totalRequested, totalDelivered } = calculateTotals(periodEntries);
 
   return (
@@ -345,10 +349,10 @@ export default function App() {
 
           <div className="space-y-4">
             <h2 className="font-bold text-gray-800 dark:text-gray-100" style={{ fontSize: 'var(--text-2xl)' }}>
-              Registros del Período
+              Historial de Registros
             </h2>
             <EntryList
-              periodEntries={periodEntries}
+              periodEntries={allEntries}
               onEdit={startEdit}
               onDelete={deleteEntry}
               onDeleteDay={deleteDay}

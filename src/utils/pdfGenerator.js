@@ -12,17 +12,54 @@ export const generatePDF = (periodEntries, currentPeriod, totals, userName = nul
     });
   };
 
-  // Calcular altura necesaria basada en cantidad de registros
-  const baseHeight = 200;
-  const totalDeliveries = periodEntries.reduce((sum, day) => 
-    sum + day.entries.flatMap(e => e.deliveries).length, 0
-  );
-  const estimatedHeight = Math.max(baseHeight, 100 + (totalDeliveries * 8) + (periodEntries.length * 12));
+  // Calcular altura REAL necesaria paso a paso
+  let calculatedHeight = 0;
+  
+  // ENCABEZADO
+  calculatedHeight += 12; // margen inicial
+  calculatedHeight += 8;  // después línea punteada
+  calculatedHeight += 22; // logo + texto
+  calculatedHeight += 6;  // línea período
+  calculatedHeight += 6;  // línea emisión
+  if (userName) calculatedHeight += 6; // línea trabajador
+  calculatedHeight += 4;  // espacio
+  calculatedHeight += 8;  // línea punteada
+  
+  // TÍTULO
+  calculatedHeight += 8;  // título
+  calculatedHeight += 8;  // línea punteada
+  
+  // TABLA
+  calculatedHeight += 6;  // encabezado tabla
+  calculatedHeight += 6;  // línea sólida + espacio
+  
+  // CONTENIDO (lo más importante)
+  periodEntries.forEach((dayEntry) => {
+    const allDeliveries = dayEntry.entries.flatMap(e => e.deliveries).length;
+    calculatedHeight += (allDeliveries * 6); // cada entrega
+    calculatedHeight += 4;  // subtotal
+    calculatedHeight += 6;  // línea divisoria
+  });
+  
+  // TOTALES Y PIE
+  calculatedHeight += 4;  // espacio
+  calculatedHeight += 8;  // línea punteada
+  calculatedHeight += 8;  // total solicitado
+  calculatedHeight += 8;  // total entregado
+  calculatedHeight += 8;  // días trabajados
+  calculatedHeight += 6;  // línea punteada
+  calculatedHeight += 8;  // texto conserve
+  calculatedHeight += 8;  // línea punteada
+  calculatedHeight += 5;  // espacio
+  calculatedHeight += 6;  // ID
+  calculatedHeight += 10; // margen final de seguridad
+
+  const finalHeight = Math.max(200, calculatedHeight);
 
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
-    format: [120, estimatedHeight]
+    format: [120, finalHeight]
   });
 
   let y = 12;
@@ -52,37 +89,28 @@ export const generatePDF = (periodEntries, currentPeriod, totals, userName = nul
   drawDashedLine(y);
   y += 8;
 
-  // Icono tipo app: Centrado Horizontalmente
   const iconSize = 14;
   const spacing = 5;
   const logoText = 'KILORAMA';
 
-  // 1. Calcular el ancho total del logo (Icono + Espacio + Texto)
   doc.setFontSize(20); 
   doc.setFont('courier', 'bold');
   const textWidth = doc.getTextWidth(logoText);
   const totalLogoWidth = iconSize + spacing + textWidth;
-
-  // 2. Calcular la posición x inicial para centrar
   const xCentered = (pageWidth - totalLogoWidth) / 2;
 
-  // Dibujar el rectángulo del icono
   doc.setFillColor(0, 0, 0);
   doc.roundedRect(xCentered, y, iconSize, iconSize, 3, 3, 'F');
   
-  // Dibujar 'kg'
   doc.setFontSize(24);
   doc.setFont('courier', 'bold');
   doc.setTextColor(255, 255, 255);
   const kgText = 'kg';
   const kgWidth = doc.getTextWidth(kgText);
-  // Centrar 'kg' dentro del rectángulo, que ahora está en xCentered
   doc.text(kgText, xCentered + (iconSize - kgWidth) / 2, y + 9.5);
-  doc.setTextColor(0, 0, 0); // Reset color
+  doc.setTextColor(0, 0, 0);
 
-  // Dibujar 'KILORAMA'
   doc.setFontSize(20);
-  // Posicionar 'KILORAMA' después del icono (xCentered + iconSize + spacing)
   doc.text(logoText, xCentered + iconSize + spacing, y + 9);
 
   y += 22;
@@ -107,15 +135,15 @@ export const generatePDF = (periodEntries, currentPeriod, totals, userName = nul
   y += 8;
 
   // TÍTULO
-  doc.setFontSize(20); // Se incrementa el tamaño
-  doc.setFont('courier', 'bold'); // Se mantiene en negrita
+  doc.setFontSize(20);
+  doc.setFont('courier', 'bold');
   centerText('COMPROBANTE DE TRABAJO', y);
   y += 8;
   drawDashedLine(y);
   y += 8;
 
   // TABLA ENCABEZADO
-  doc.setFontSize(11); // Se incrementa el tamaño
+  doc.setFontSize(11);
   doc.setFont('courier', 'bold');
   doc.text('Fecha', margin + 2, y);
   doc.text('Ent.', margin + 35, y);
@@ -126,7 +154,7 @@ export const generatePDF = (periodEntries, currentPeriod, totals, userName = nul
   y += 6;
 
   doc.setFont('courier', 'normal');
-  doc.setFontSize(11); // Se incrementa el tamaño de los valores de la tabla
+  doc.setFontSize(11);
 
   // REGISTROS
   periodEntries.forEach((dayEntry) => {
@@ -149,10 +177,10 @@ export const generatePDF = (periodEntries, currentPeriod, totals, userName = nul
 
     const dayTotal = allDeliveries.reduce((sum, d) => sum + d.delivered, 0);
     doc.setFont('courier', 'bold');
-    doc.setFontSize(12); // Se incrementa el subtotal
+    doc.setFontSize(12);
     doc.text('Subtotal día:', margin + 35, y);
     doc.text(`${dayTotal.toFixed(1)} kg`, margin + 82, y);
-    doc.setFontSize(11); // Se restablece el tamaño para el texto normal de la tabla
+    doc.setFontSize(11);
     doc.setFont('courier', 'normal');
     y += 4;
     
