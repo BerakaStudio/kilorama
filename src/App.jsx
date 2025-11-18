@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FileText } from 'lucide-react';
+import { Plus, FileText, Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import Header from './components/Header';
 import Summary from './components/Summary';
 import EntryForm from './components/EntryForm';
@@ -7,6 +8,7 @@ import EntryList from './components/EntryList';
 import Modal from './components/Modal';
 import Footer from './components/Footer';
 import OnboardingModal from './components/OnboardingModal';
+import SettingsModal from './components/SettingsModal';
 import { storage, userStorage } from './utils/storage';
 import { generatePDF } from './utils/pdfGenerator';
 
@@ -16,7 +18,9 @@ export default function App() {
   const [currentPeriod, setCurrentPeriod] = useState({ start: '', end: '' });
   const [editingId, setEditingId] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [userData, setUserData] = useState(null);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     deliveries: [{ requested: '', delivered: '' }]
@@ -28,9 +32,32 @@ export default function App() {
     checkOnboarding();
   }, []);
 
+  // Sincronización entre pestañas
   useEffect(() => {
-    if (entries.length > 0) saveEntries();
-  }, [entries]);
+    const handleStorageChange = (e) => {
+      if (e.key === 'vegetable-entries' && e.newValue) {
+        try {
+          const newEntries = JSON.parse(e.newValue);
+          setEntries(newEntries);
+          toast.success('Datos sincronizados desde otra pestaña');
+        } catch (error) {
+          console.error('Error al sincronizar datos:', error);
+        }
+      }
+      
+      if (e.key === 'kilorama-user' && e.newValue) {
+        try {
+          const newUser = JSON.parse(e.newValue);
+          setUserData(newUser);
+        } catch (error) {
+          console.error('Error al sincronizar usuario:', error);
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   const checkOnboarding = async () => {
     const hasSeenOnboarding = await userStorage.hasSeenOnboarding();
@@ -51,15 +78,25 @@ export default function App() {
     await userStorage.setUser(user);
     setUserData(user);
     setShowOnboarding(false);
+    toast.success(`¡Bienvenido, ${fullName.split(' ')[0]}!`);
+  };
+
+  const handleUserNameChange = async (newName) => {
+    const updatedUser = { ...userData, fullName: newName };
+    await userStorage.setUser(updatedUser);
+    setUserData(updatedUser);
   };
 
   const loadEntries = async () => {
     const result = await storage.get('vegetable-entries');
-    if (result?.value) setEntries(JSON.parse(result.value));
+    if (result?.value) {
+      setEntries(JSON.parse(result.value));
+    }
   };
 
-  const saveEntries = async () => {
-    await storage.set('vegetable-entries', JSON.stringify(entries));
+  // Guardar inmediatamente (sin useEffect)
+  const saveEntriesImmediately = async (newEntries) => {
+    await storage.set('vegetable-entries', JSON.stringify(newEntries));
   };
 
   const calculateCurrentPeriod = () => {
@@ -82,14 +119,20 @@ export default function App() {
     }
   };
 
-  const handleSubmit = () => {
-    if (!formData.date) return;
+  const handleSubmit = async () => {
+    if (!formData.date) {
+      toast.error('Por favor ingresa una fecha');
+      return;
+    }
 
     const validDeliveries = formData.deliveries.filter(
       d => d.requested && d.delivered
     );
 
-    if (validDeliveries.length === 0) return;
+    if (validDeliveries.length === 0) {
+      toast.error('Debes agregar al menos una entrega');
+      return;
+    }
 
     const newEntry = {
       id: Array.isArray(editingId) ? Date.now() : (editingId || Date.now()),
@@ -100,13 +143,27 @@ export default function App() {
       }))
     };
 
+    let newEntries;
+    
     if (editingId) {
       const idsToRemove = Array.isArray(editingId) ? editingId : [editingId];
       const filteredEntries = entries.filter(e => !idsToRemove.includes(e.id));
-      setEntries([...filteredEntries, newEntry]);
+      newEntries = [...filteredEntries, newEntry];
+      setEntries(newEntries);
+      
+      // Guardar INMEDIATAMENTE
+      await saveEntriesImmediately(newEntries);
+      
       setEditingId(null);
+      toast.success('Registro actualizado correctamente');
     } else {
-      setEntries([...entries, newEntry]);
+      newEntries = [...entries, newEntry];
+      setEntries(newEntries);
+      
+      // Guardar INMEDIATAMENTE
+      await saveEntriesImmediately(newEntries);
+      
+      toast.success('Registro guardado correctamente');
     }
 
     resetForm();
@@ -137,16 +194,28 @@ export default function App() {
     setShowForm(true);
   };
 
-  const deleteEntry = (id) => {
+  const deleteEntry = async (id) => {
     if (confirm('¿Eliminar este registro?')) {
-      setEntries(entries.filter(e => e.id !== id));
+      const newEntries = entries.filter(e => e.id !== id);
+      setEntries(newEntries);
+      
+      // Guardar INMEDIATAMENTE
+      await saveEntriesImmediately(newEntries);
+      
+      toast.success('Registro eliminado');
     }
   };
 
-  const deleteDay = (dayEntry) => {
+  const deleteDay = async (dayEntry) => {
     if (confirm('¿Eliminar todos los registros de este día?')) {
       const idsToDelete = dayEntry.entries.map(e => e.id);
-      setEntries(entries.filter(e => !idsToDelete.includes(e.id)));
+      const newEntries = entries.filter(e => !idsToDelete.includes(e.id));
+      setEntries(newEntries);
+      
+      // Guardar INMEDIATAMENTE
+      await saveEntriesImmediately(newEntries);
+      
+      toast.success('Registros del día eliminados');
     }
   };
 
@@ -184,20 +253,36 @@ export default function App() {
     return { totalRequested, totalDelivered };
   };
 
-  const handleGeneratePDF = () => {
-    const periodEntries = getPeriodEntries();
-    const totals = calculateTotals(periodEntries);
-    generatePDF(periodEntries, currentPeriod, totals, userData?.fullName);
+  const handleGeneratePDF = async () => {
+    setIsGeneratingPDF(true);
+    try {
+      const periodEntries = getPeriodEntries();
+      const totals = calculateTotals(periodEntries);
+      await generatePDF(periodEntries, currentPeriod, totals, userData?.fullName);
+      toast.success('Comprobante generado correctamente');
+    } catch (error) {
+      toast.error('Error al generar el comprobante');
+      console.error(error);
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   const periodEntries = getPeriodEntries();
   const { totalRequested, totalDelivered } = calculateTotals(periodEntries);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col transition-colors">
       <OnboardingModal 
         isOpen={showOnboarding} 
         onComplete={handleOnboardingComplete} 
+      />
+      
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        currentUserName={userData?.fullName}
+        onUserNameChange={handleUserNameChange}
       />
       
       <div className="flex-1 p-4 pb-20">
@@ -206,6 +291,7 @@ export default function App() {
             currentPeriod={currentPeriod} 
             userName={userData?.fullName}
             workDays={periodEntries.length}
+            onOpenSettings={() => setShowSettings(true)}
           />
 
           <Summary
@@ -217,18 +303,29 @@ export default function App() {
           <div className="grid grid-cols-2 gap-4 mb-6">
             <button
               onClick={() => setShowForm(true)}
-              className="bg-green-500 hover:bg-green-600 text-white rounded-xl p-4 flex items-center justify-center gap-2 text-lg font-semibold shadow-lg transition-colors"
+              className="bg-green-500 hover:bg-green-600 text-white rounded-xl p-4 flex items-center justify-center gap-2 font-semibold shadow-lg transition-all"
+              style={{ fontSize: 'var(--text-lg)' }}
             >
-              <Plus className="w-6 h-6" />
+              <Plus style={{ width: 'var(--icon-md)', height: 'var(--icon-md)' }} />
               Nuevo Registro
             </button>
             <button
               onClick={handleGeneratePDF}
-              disabled={periodEntries.length === 0}
-              className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white rounded-xl p-4 flex items-center justify-center gap-2 text-lg font-semibold shadow-lg transition-colors"
+              disabled={periodEntries.length === 0 || isGeneratingPDF}
+              className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-xl p-4 flex items-center justify-center gap-2 font-semibold shadow-lg transition-all"
+              style={{ fontSize: 'var(--text-lg)' }}
             >
-              <FileText className="w-6 h-6" />
-              Generar Comprobante
+              {isGeneratingPDF ? (
+                <>
+                  <Loader2 className="animate-spin" style={{ width: 'var(--icon-md)', height: 'var(--icon-md)' }} />
+                  Generando...
+                </>
+              ) : (
+                <>
+                  <FileText style={{ width: 'var(--icon-md)', height: 'var(--icon-md)' }} />
+                  Generar Comprobante
+                </>
+              )}
             </button>
           </div>
 
@@ -247,7 +344,7 @@ export default function App() {
           </Modal>
 
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-gray-800">
+            <h2 className="font-bold text-gray-800 dark:text-gray-100" style={{ fontSize: 'var(--text-2xl)' }}>
               Registros del Período
             </h2>
             <EntryList

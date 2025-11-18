@@ -22,14 +22,14 @@ export default function Modal({ isOpen, onClose, title, children }) {
           className="fixed inset-0 bg-black/50 transition-opacity"
           onClick={onClose}
         />
-        <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center rounded-t-2xl z-10">
-            <h3 className="text-xl font-bold text-gray-800">{title}</h3>
+        <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto transition-colors">
+          <div className="sticky top-0 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex justify-between items-center rounded-t-2xl z-10">
+            <h3 className="font-bold text-gray-800 dark:text-gray-100" style={{ fontSize: 'var(--text-xl)' }}>{title}</h3>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
-              <X className="w-6 h-6 text-gray-500" />
+              <X style={{ width: 'var(--icon-md)', height: 'var(--icon-md)' }} className="text-gray-500 dark:text-gray-400" />
             </button>
           </div>
           <div className="p-6">
