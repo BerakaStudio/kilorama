@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
 import { ArrowRight, ArrowLeft } from 'lucide-react';
+import welcomeIcon from '../img/welcome.svg';
+import registerIcon from '../img/register.svg';
+import editIcon from '../img/edit.svg';
+import receiptIcon from '../img/receipt.svg';
 
 export default function OnboardingModal({ isOpen, onComplete }) {
   const [step, setStep] = useState(0);
@@ -11,22 +15,22 @@ export default function OnboardingModal({ isOpen, onComplete }) {
     {
       title: '¡Bienvenido a Kilorama!',
       description: 'Gestiona tus registros de trozado de vegetales de forma simple y eficiente.',
-      icon: 'src/img/welcome.svg'
+      icon: welcomeIcon
     },
     {
       title: 'Registra tus entregas',
       description: 'Crea nuevos registros diarios con fecha y cantidades solicitadas/entregadas. Puedes agregar múltiples entregas por día.',
-      icon: 'src/img/register.svg'
+      icon: registerIcon
     },
     {
       title: 'Edita o elimina',
       description: 'Modifica registros existentes o elimina días completos con los íconos de edición y eliminación.',
-      icon: 'src/img/edit.svg'
+      icon: editIcon
     },
     {
       title: 'Genera comprobantes',
       description: 'Crea comprobantes PDF por período con el resumen completo de tu trabajo para respaldo de pagos.',
-      icon: 'src/img/receipt.svg'
+      icon: receiptIcon
     }
   ];
 
