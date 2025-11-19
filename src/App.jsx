@@ -9,6 +9,7 @@ import Modal from './components/Modal';
 import Footer from './components/Footer';
 import OnboardingModal from './components/OnboardingModal';
 import SettingsModal from './components/SettingsModal';
+import { SkeletonCard, SkeletonSummary, SkeletonHeader } from './components/SkeletonLoader';
 import { storage, userStorage } from './utils/storage';
 import { generatePDF } from './utils/pdfGenerator';
 
@@ -21,6 +22,7 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [userData, setUserData] = useState(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     deliveries: [{ requested: '', delivered: '' }]
@@ -32,7 +34,6 @@ export default function App() {
     checkOnboarding();
   }, []);
 
-  // Sincronización entre pestañas
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === 'vegetable-entries' && e.newValue) {
@@ -63,6 +64,7 @@ export default function App() {
     const hasSeenOnboarding = await userStorage.hasSeenOnboarding();
     if (!hasSeenOnboarding) {
       setShowOnboarding(true);
+      setIsLoading(false);
     } else {
       const user = await userStorage.getUser();
       setUserData(user);
@@ -78,6 +80,7 @@ export default function App() {
     await userStorage.setUser(user);
     setUserData(user);
     setShowOnboarding(false);
+    setIsLoading(false);
     toast.success(`¡Bienvenido, ${fullName.split(' ')[0]}!`);
   };
 
@@ -88,10 +91,14 @@ export default function App() {
   };
 
   const loadEntries = async () => {
+    setIsLoading(true);
     const result = await storage.get('vegetable-entries');
     if (result?.value) {
       setEntries(JSON.parse(result.value));
     }
+    // Simular delay mínimo para mostrar skeleton
+    await new Promise(resolve => setTimeout(resolve, 500));
+    setIsLoading(false);
   };
 
   const saveEntriesImmediately = async (newEntries) => {
@@ -116,6 +123,15 @@ export default function App() {
         end: new Date(year, month, lastDay).toISOString().split('T')[0]
       });
     }
+  };
+
+  const handleQuickRegister = () => {
+    setFormData({
+      date: new Date().toISOString().split('T')[0],
+      deliveries: [{ requested: '', delivered: '' }]
+    });
+    setEditingId(null);
+    setShowForm(true);
   };
 
   const handleSubmit = async () => {
@@ -206,22 +222,6 @@ export default function App() {
     }
   };
 
-  // Modificado: Ahora devuelve TODAS las entregas (sin filtrar por período)
-  const getAllEntries = () => {
-    const grouped = entries.reduce((acc, entry) => {
-      if (!acc[entry.date]) {
-        acc[entry.date] = { date: entry.date, entries: [] };
-      }
-      acc[entry.date].entries.push(entry);
-      return acc;
-    }, {});
-
-    return Object.values(grouped).sort(
-      (a, b) => new Date(b.date) - new Date(a.date) // Orden descendente (más recientes primero)
-    );
-  };
-
-  // Calcula totales solo del período actual para el PDF
   const getPeriodEntries = () => {
     const filtered = entries.filter(
       e => e.date >= currentPeriod.start && e.date <= currentPeriod.end
@@ -240,11 +240,11 @@ export default function App() {
     );
   };
 
-  const calculateTotals = (entriesList) => {
+  const calculateTotals = (periodEntries) => {
     let totalRequested = 0;
     let totalDelivered = 0;
 
-    entriesList.forEach(dayEntry => {
+    periodEntries.forEach(dayEntry => {
       dayEntry.entries.forEach(entry => {
         entry.deliveries.forEach(d => {
           totalRequested += d.requested;
@@ -271,8 +271,7 @@ export default function App() {
     }
   };
 
-  const allEntries = getAllEntries(); // Mostrar TODAS las entregas históricas
-  const periodEntries = getPeriodEntries(); // Solo para el PDF
+  const periodEntries = getPeriodEntries();
   const { totalRequested, totalDelivered } = calculateTotals(periodEntries);
 
   return (
@@ -289,75 +288,91 @@ export default function App() {
         onUserNameChange={handleUserNameChange}
       />
       
-      <div className="flex-1 p-4 pb-20">
+      <div className="flex-1 p-2 sm:p-4 pb-20">
         <div className="max-w-4xl mx-auto">
-          <Header 
-            currentPeriod={currentPeriod} 
-            userName={userData?.fullName}
-            workDays={periodEntries.length}
-            onOpenSettings={() => setShowSettings(true)}
-          />
+          {isLoading ? (
+            <>
+              <SkeletonHeader />
+              <SkeletonSummary />
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="h-14 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
+                <div className="h-14 bg-gray-200 dark:bg-gray-700 rounded-xl animate-pulse"></div>
+              </div>
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          ) : (
+            <>
+              <Header 
+                currentPeriod={currentPeriod} 
+                userName={userData?.fullName}
+                workDays={periodEntries.length}
+                onOpenSettings={() => setShowSettings(true)}
+                onQuickRegister={handleQuickRegister}
+              />
 
-          <Summary
-            totalRequested={totalRequested}
-            totalDelivered={totalDelivered}
-            daysWorked={periodEntries.length}
-          />
+              <Summary
+                totalRequested={totalRequested}
+                totalDelivered={totalDelivered}
+                daysWorked={periodEntries.length}
+              />
 
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <button
-              onClick={() => setShowForm(true)}
-              className="bg-green-500 hover:bg-green-600 text-white rounded-xl p-4 flex items-center justify-center gap-2 font-semibold shadow-lg transition-all"
-              style={{ fontSize: 'var(--text-lg)' }}
-            >
-              <Plus style={{ width: 'var(--icon-md)', height: 'var(--icon-md)' }} />
-              Nuevo Registro
-            </button>
-            <button
-              onClick={handleGeneratePDF}
-              disabled={periodEntries.length === 0 || isGeneratingPDF}
-              className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-xl p-4 flex items-center justify-center gap-2 font-semibold shadow-lg transition-all"
-              style={{ fontSize: 'var(--text-lg)' }}
-            >
-              {isGeneratingPDF ? (
-                <>
-                  <Loader2 className="animate-spin" style={{ width: 'var(--icon-md)', height: 'var(--icon-md)' }} />
-                  Generando...
-                </>
-              ) : (
-                <>
-                  <FileText style={{ width: 'var(--icon-md)', height: 'var(--icon-md)' }} />
-                  Generar Comprobante
-                </>
-              )}
-            </button>
-          </div>
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <button
+                  onClick={() => setShowForm(true)}
+                  className="bg-green-500 hover:bg-green-600 text-white rounded-xl p-4 flex items-center justify-center gap-2 font-semibold shadow-lg transition-all"
+                  style={{ fontSize: 'var(--text-lg)' }}
+                >
+                  <Plus style={{ width: 'var(--icon-md)', height: 'var(--icon-md)' }} />
+                  Nuevo Registro
+                </button>
+                <button
+                  onClick={handleGeneratePDF}
+                  disabled={periodEntries.length === 0 || isGeneratingPDF}
+                  className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-xl p-4 flex items-center justify-center gap-2 font-semibold shadow-lg transition-all"
+                  style={{ fontSize: 'var(--text-lg)' }}
+                >
+                  {isGeneratingPDF ? (
+                    <>
+                      <Loader2 className="animate-spin" style={{ width: 'var(--icon-md)', height: 'var(--icon-md)' }} />
+                      Generando...
+                    </>
+                  ) : (
+                    <>
+                      <FileText style={{ width: 'var(--icon-md)', height: 'var(--icon-md)' }} />
+                      Generar Comprobante
+                    </>
+                  )}
+                </button>
+              </div>
 
-          <Modal
-            isOpen={showForm}
-            onClose={resetForm}
-            title={editingId ? 'Editar Registro' : 'Nuevo Registro'}
-          >
-            <EntryForm
-              formData={formData}
-              setFormData={setFormData}
-              onSubmit={handleSubmit}
-              onCancel={resetForm}
-              isEditing={!!editingId}
-            />
-          </Modal>
+              <Modal
+                isOpen={showForm}
+                onClose={resetForm}
+                title={editingId ? 'Editar Registro' : 'Nuevo Registro'}
+              >
+                <EntryForm
+                  formData={formData}
+                  setFormData={setFormData}
+                  onSubmit={handleSubmit}
+                  onCancel={resetForm}
+                  isEditing={!!editingId}
+                />
+              </Modal>
 
-          <div className="space-y-4">
-            <h2 className="font-bold text-gray-800 dark:text-gray-100" style={{ fontSize: 'var(--text-2xl)' }}>
-              Historial de Registros
-            </h2>
-            <EntryList
-              periodEntries={allEntries}
-              onEdit={startEdit}
-              onDelete={deleteEntry}
-              onDeleteDay={deleteDay}
-            />
-          </div>
+              <div className="space-y-4">
+                <h2 className="font-bold text-gray-800 dark:text-gray-100" style={{ fontSize: 'var(--text-2xl)' }}>
+                  Registros del Período
+                </h2>
+                <EntryList
+                  periodEntries={periodEntries}
+                  onEdit={startEdit}
+                  onDelete={deleteEntry}
+                  onDeleteDay={deleteDay}
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
       <Footer />

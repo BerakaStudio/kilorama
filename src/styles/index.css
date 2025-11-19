@@ -146,3 +146,26 @@ button:disabled {
 button:hover:not(:disabled).shadow-lg {
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.08);
 }
+
+/* Prevenir scroll horizontal */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Ajustes responsive */
+@media (max-width: 640px) {
+  /* Tamaños más pequeños en mobile cuando está en L */
+  html[data-font-size="large"] {
+    --text-xs: 0.875rem;
+    --text-sm: 1rem;
+    --text-base: 1.125rem;
+    --text-lg: 1.25rem;
+    --text-xl: 1.5rem;
+    --text-2xl: 1.75rem;
+    --text-3xl: 2rem;
+    --icon-sm: 1.125rem;
+    --icon-md: 1.5rem;
+    --icon-lg: 1.75rem;
+  }
+}
